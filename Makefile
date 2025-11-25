@@ -1,31 +1,30 @@
-# Makefile for managing n8n Docker container
+# Makefile for managing n8n Docker stack
 
 # Configuration
 IMAGE ?= n8nio/n8n:latest
-CONTAINER_NAME ?= n8n
-# Directory where n8n stores its data (adjust if needed)
-DATA_DIR ?= /opt/n8n
+# Base directory where installer placed all files
+BASE_DIR ?= /opt/n8n
 
-# Docker run options (customise if you need env vars, ports, etc.)
-DOCKER_RUN_OPTS ?= -p 5678:5678 -v $(DATA_DIR):/root/.n8n
+# Docker compose command with optional sudo fallback
+DCOMPOSE = docker compose
+DCOMPOSE_SUDO = sudo docker compose
 
 .PHONY: up down restart logs update
 
 up:
-	@echo "🚀 Starting n8n container..."
-	docker run -d --name $(CONTAINER_NAME) $(DOCKER_RUN_OPTS) $(IMAGE)
+	@echo "🚀 Starting n8n stack..."
+	@cd $(BASE_DIR) && $(DCOMPOSE) up -d || (cd $(BASE_DIR) && $(DCOMPOSE_SUDO) up -d)
 
 down:
-	@echo "🛑 Stopping and removing n8n container..."
-	docker stop $(CONTAINER_NAME) && docker rm $(CONTAINER_NAME)
+	@echo "🛑 Stopping n8n stack..."
+	@cd $(BASE_DIR) && $(DCOMPOSE) down || (cd $(BASE_DIR) && $(DCOMPOSE_SUDO) down)
 
 restart: down up
 
 logs:
 	@echo "📜 Showing logs (follow)..."
-	docker logs -f $(CONTAINER_NAME)
+	@cd $(BASE_DIR) && $(DCOMPOSE) logs -f || (cd $(BASE_DIR) && $(DCOMPOSE_SUDO) logs -f)
 
 update:
-	@echo "🔄 Updating n8n image and restarting container..."
-	docker pull $(IMAGE)
-	$(MAKE) restart
+	@echo "🔄 Updating n8n image and restarting stack..."
+	@cd $(BASE_DIR) && $(DCOMPOSE) pull n8n && $(DCOMPOSE) up -d --force-recreate || (cd $(BASE_DIR) && $(DCOMPOSE_SUDO) pull n8n && $(DCOMPOSE_SUDO) up -d --force-recreate)
